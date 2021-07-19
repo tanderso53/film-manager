@@ -43,20 +43,25 @@ OBJDIR		:=	./objdir
 
 # BUILD SECTION
 CXX		=	clang++
-CFLAGS		=	-Wall -std=c++17
+CFLAGS		=	-Wall -std=c++17 -I/usr/local/include
 LDLIBS		=	
-LDFLAGS		+=	-L/usr/local/lib
+LDFLAGS		=	-L/usr/local/lib
 APP		=	film-manager
 CXX_SRCS	=	film-manager.cpp
 CXX_OBJS	=	$(addprefix $(OBJDIR)/,$(CXX_SRCS:.cpp=.o))
 OBJS		:=	$(CXX_OBJS)
+INSTROBJ	:=	$(OBJS:.o=.oi)
 HPP		=	
 LICENSE		=	./LICENSE
-.PHONY: all clean install
+.PHONY: all clean install coverage
 
 $(OBJDIR)/%.o: $(srcdir)/%.cpp $(addprefix $(srcdir)/,$(HPP))
 	@echo "*** BUILDING $@ ***"
-	$(CXX) -c ${CFLAGS} -c -o $@ $<
+	$(CXX) -c ${CFLAGS} -o $@ $<
+
+$(OBJDIR)/%.oi: $(srcdir)/%.cpp $(addprefix $(srcdir/,$(HPP))
+	@echo "*** BUILDING $@ ***"
+	$(CXX) -c ${CFLAGS} -fprofile-instr-generate -fcoverage-mapping -o $@ $<
 
 $(APP): $(OBJS)
 	@echo "*** BUILDING $@ ***"
@@ -68,6 +73,12 @@ all: $(APP)
 clean:
 	$(RM) $(APP)
 	$(RM) -R $(OBJDIR)
+
+coverage: $(INSTROBJ)
+	@echo "*** BUILDING $@ ***"
+	$(CXX) ${CFLAGS} ${LDFLAGS} ${LDLIBS} \
+		-fprofile-instr-generate -fcoverage-mapping -o $@ $(OBJS)
+	
 
 $(OBJS): | $(OBJDIR)
 
