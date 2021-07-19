@@ -1,0 +1,13 @@
+build1:
+  stage: build
+  script:
+    - gmake
+  artifacts:
+    paths:
+      - ./film-manager
+    expire_in: 1 week
+
+test1:
+  stage: test
+  script:
+    - ./film-manager
