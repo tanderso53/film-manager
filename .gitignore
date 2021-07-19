@@ -1,0 +1,7 @@
+*.o
+*.so
+*~
+film-manager
+#*#
+doc/*
+*.core
