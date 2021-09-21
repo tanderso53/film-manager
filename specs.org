@@ -1,0 +1,80 @@
+#+TITLE: Film Mangager Specifications
+#+AUTHOR: Tyler J. Anderson
+
+#+STARTUP: indent
+#+STARTUP: showall
+
+* Description
+
+The Film Manager uses a client-server model to keep track of
+35mm/60mm film rolls, sheet film, digital scans, and silver
+prints. Even more critical it can ease the collection and
+maintenance of metadata information across each of these media.
+
+A back-end server will handle database setup, filing, and data
+consistency, while any client device with a valid authentication
+token can enter or retrieve data on the film collection.
+
+
+* Specifications
+  
+** TODO Client software [0/9]
+
+*** TODO Ncurses form interface
+
+**** TODO Abstracted from ncurses library
+
+- Can add any amount of form fields without interacting with
+  the library
+
+*** TODO GPG key password storage for server authentication
+
+*** TODO Data entry model
+
+**** TODO Check valid values in constraints
+
+**** TODO Metadata copying
+
+*** TODO Data retrieval model
+
+*** TODO Data modification model
+
+*** TODO Command line options
+
+**** TODO Usage information
+
+**** TODO Version information
+
+**** TODO Config file path
+
+**** TODO Database connection strings
+
+*** TODO Mode Commands
+
+**** TODO Film Mode
+
+**** TODO Paper Mode
+
+**** TODO Scan Mode
+
+*** TODO Postgres Database Connection
+
+*** TODO Configuration
+
+**** TODO System default configuration file
+
+**** TODO Search local .config, $HOME, and $XDG_PATH for conf file
+
+**** TODO Interactive config for unset required keys
+
+** TODO Server Application [0/5]
+
+*** TODO Database creation
+
+*** TODO Database regular dump-level backup
+
+*** TODO Secure encrypted communication with client entities
+
+*** TODO Constraint-checking
+
+*** TODO Standardized error reporting to client
