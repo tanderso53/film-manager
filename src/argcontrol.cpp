@@ -16,6 +16,7 @@
 
 #include "argcontrol.h"
 #include <assert.h>
+#include <cstring>
 
 film::ArgList::ArgList(int argc, const char** argv, const char* optl)
 {

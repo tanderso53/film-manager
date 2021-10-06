@@ -24,7 +24,6 @@
 #include <cstring>
 #include <utility>
 #include <iostream>
-#include <cstdarg>
 #include <assert.h>
 
 /// Generate the list of fields to fill out

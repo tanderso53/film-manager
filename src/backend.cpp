@@ -19,6 +19,7 @@
 
 #include <vector>
 #include <assert.h>
+#include <cstdarg>
 
 film::TextBackend::TextBackend(std::ostream& outstream)
   :_outstream(outstream)

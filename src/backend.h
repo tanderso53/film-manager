@@ -20,6 +20,7 @@
 #define BACKEND_H
 
 #include <iostream>
+#include <vector>
 
 namespace film {
   /// Abstract class to describe backends that accept data
