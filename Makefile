@@ -42,26 +42,41 @@ srcdir		=	./src
 OBJDIR		:=	./objdir
 
 # BUILD SECTION
+CC		=	clang
 CXX		=	clang++
-CFLAGS		=	-Wall -std=c++17 -I/usr/local/include
-LDLIBS		=	
+CFLAGS		=	-Wall -g -I/usr/local/include
+CXXFLAGS	=	-std=c++17
+LDLIBS		=	-lncurses -lform -lc
 LDFLAGS		=	-L/usr/local/lib
 APP		=	film-manager
-CXX_SRCS	=	film-manager.cpp
+C_SRCS		=	fields_magic.c
+CXX_SRCS	=	film-manager.cpp argcontrol.cpp backend.cpp
+C_OBJS		=	$(addprefix $(OBJDIR)/,$(C_SRCS:.c=.o))
 CXX_OBJS	=	$(addprefix $(OBJDIR)/,$(CXX_SRCS:.cpp=.o))
-OBJS		:=	$(CXX_OBJS)
+OBJS		:=	$(C_OBJS) $(CXX_OBJS)
 INSTROBJ	:=	$(OBJS:.o=.oi)
-HPP		=	
+H		=	fields_magic.h backend.h argcontrol.h
 LICENSE		=	./LICENSE
+
 .PHONY: all clean install coverage
 
-$(OBJDIR)/%.o: $(srcdir)/%.cpp $(addprefix $(srcdir)/,$(HPP))
+$(OBJDIR)/%.o: $(srcdir)/%.c $(addprefix $(srcdir)/,$(H))
 	@echo "*** BUILDING $@ ***"
-	$(CXX) -c ${CFLAGS} -o $@ $<
+	$(CC) -c ${CFLAGS} -o $@ $<
 
-$(OBJDIR)/%.oi: $(srcdir)/%.cpp $(addprefix $(srcdir/,$(HPP))
+$(OBJDIR)/%.oi: $(srcdir)/%.c $(addprefix $(srcdir)/,$(H))
 	@echo "*** BUILDING $@ ***"
-	$(CXX) -c ${CFLAGS} -fprofile-instr-generate -fcoverage-mapping -o $@ $<
+	$(CC) -c ${CFLAGS} -fprofile-instr-generate -fcoverage-mapping \
+		-o $@ $<
+
+$(OBJDIR)/%.o: $(srcdir)/%.cpp $(addprefix $(srcdir)/,$(H))
+	@echo "*** BUILDING $@ ***"
+	$(CXX) -c ${CFLAGS} ${CXXFLAGS} -o $@ $<
+
+$(OBJDIR)/%.oi: $(srcdir)/%.cpp $(addprefix $(srcdir)/,$(H))
+	@echo "*** BUILDING $@ ***"
+	$(CXX) -c ${CFLAGS} ${CXXFLAGS} -fprofile-instr-generate \
+		-fcoverage-mapping -o $@ $<
 
 $(APP): $(OBJS)
 	@echo "*** BUILDING $@ ***"
@@ -78,7 +93,6 @@ coverage: $(INSTROBJ)
 	@echo "*** BUILDING $@ ***"
 	$(CXX) ${CFLAGS} ${LDFLAGS} ${LDLIBS} \
 		-fprofile-instr-generate -fcoverage-mapping -o $@ $(OBJS)
-	
 
 $(OBJS): | $(OBJDIR)
 
