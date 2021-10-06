@@ -10,4 +10,4 @@ build1:
 test1:
   stage: test
   script:
-    - ./film-manager
+    - ./film-manager --help
