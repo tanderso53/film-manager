@@ -51,7 +51,7 @@ static void keyfun_save(struct formdata* _formdata)
 	// Or the current field buffer won't be sync with what is displayed
 	form_driver(form, REQ_NEXT_FIELD);
 	form_driver(form, REQ_PREV_FIELD);
-	move(LINES-3, 2);
+	move(2, 2);
 
 	for (int i = 0; fields[i]; i = i + 2) {
 		// Add data to form
@@ -74,6 +74,7 @@ static void driver(int ch, struct formdata* _formdata)
 			break;
 
 		case KEY_DOWN:
+	        case 9:
 			form_driver(form, REQ_NEXT_FIELD);
 			form_driver(form, REQ_END_LINE);
 			break;
@@ -140,6 +141,17 @@ int populateFields(struct formdata* _formdata,
 	return 0;
 }
 
+int setFormGeometry()
+{
+	win_body = newwin(24, 80, 0, 0);
+	assert(win_body != NULL);
+	box(win_body, 0, 0);
+	win_form = derwin(win_body, 20, 78, 3, 1);
+	assert(win_form != NULL);
+	box(win_form, 0, 0);
+	return 0;
+}
+
 int buildForm(struct formdata* _formdata, uint8_t _numfields)
 {
 	int ch;
@@ -149,12 +161,10 @@ int buildForm(struct formdata* _formdata, uint8_t _numfields)
 	cbreak();
 	keypad(stdscr, TRUE);
 
-	win_body = newwin(24, 80, 0, 0);
-	assert(win_body != NULL);
-	box(win_body, 0, 0);
-	win_form = derwin(win_body, 20, 78, 3, 1);
-	assert(win_form != NULL);
-	box(win_form, 0, 0);
+	if (setFormGeometry() != 0) {
+		return 1;
+	}
+
 	mvwprintw(win_body, 1, 2,
 		  "Press F1 to quit and F2 to save fields content");
 	fields = malloc((_numfields * 2 + 1) * sizeof(FIELD*));
