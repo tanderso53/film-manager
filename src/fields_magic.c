@@ -17,6 +17,7 @@
 static FORM *form;
 static FIELD **fields;
 static WINDOW *win_body, *win_form;
+int fm_borked = 0; /* If non-zero, there has been an error */
 
 /*
  * This is useful because ncurses fill fields blanks with spaces.
@@ -60,8 +61,20 @@ static void keyfun_save(struct formdata* _formdata)
 	}
 
 	/* Inform the user that save was completed */
+	printw("                                       ");
+	move(2,2);
 	printw("Form data saved");
 
+	refresh();
+	pos_form_cursor(form);
+}
+
+static void pagenum_update()
+{
+	move(2,2);
+	printw("                                       ");
+	move(2,2);
+	printw("%d/%d", form_page(form) + 1, form->maxpage);
 	refresh();
 	pos_form_cursor(form);
 }
@@ -69,46 +82,59 @@ static void keyfun_save(struct formdata* _formdata)
 static void driver(int ch, struct formdata* _formdata)
 {
 	switch (ch) {
-		case KEY_F(2):
-			keyfun_save(_formdata);
-			break;
+	case KEY_F(2):
+		keyfun_save(_formdata);
+		break;
 
-		case KEY_DOWN:
-	        case 9:
-			form_driver(form, REQ_NEXT_FIELD);
-			form_driver(form, REQ_END_LINE);
-			break;
+	case KEY_DOWN:
+	case 9:
+		form_driver(form, REQ_NEXT_FIELD);
+		form_driver(form, REQ_END_LINE);
+		break;
 
-		case KEY_UP:
-			form_driver(form, REQ_PREV_FIELD);
-			form_driver(form, REQ_END_LINE);
-			break;
+	case KEY_UP:
+		form_driver(form, REQ_PREV_FIELD);
+		form_driver(form, REQ_END_LINE);
+		break;
 
-		case KEY_LEFT:
-			form_driver(form, REQ_PREV_CHAR);
-			break;
+	case KEY_LEFT:
+		form_driver(form, REQ_PREV_CHAR);
+		break;
 
-		case KEY_RIGHT:
-			form_driver(form, REQ_NEXT_CHAR);
-			break;
+	case KEY_RIGHT:
+		form_driver(form, REQ_NEXT_CHAR);
+		break;
 
 		// Delete the char before cursor
-		case KEY_BACKSPACE:
-		case 127:
-			form_driver(form, REQ_DEL_PREV);
-			break;
+	case KEY_BACKSPACE:
+	case 127:
+		form_driver(form, REQ_DEL_PREV);
+		break;
 
 		// Delete the char under the cursor
-		case KEY_DC:
-			form_driver(form, REQ_DEL_CHAR);
-			break;
+	case KEY_DC:
+		form_driver(form, REQ_DEL_CHAR);
+		break;
 
-		default:
-			form_driver(form, ch);
-			break;
+	case KEY_NPAGE:
+		form_driver(form, REQ_NEXT_PAGE);
+		/* set_form_page(form, form_page(form) + 1); */
+		pagenum_update();
+		break;
+
+	case KEY_PPAGE:
+		form_driver(form, REQ_PREV_PAGE);
+		/* set_form_page(form, form_page(form) - 1); */
+		pagenum_update();
+		break;
+
+	default:
+		form_driver(form, ch);
+		break;
 	}
 
-	wrefresh(win_form);
+	if (wrefresh(win_form) == ERR)
+		fm_borked = 1;
 }
 
 /* Populate fields with the given parameters */
@@ -116,6 +142,8 @@ int populateFields(struct formdata* _formdata,
 		   unsigned int _numfields)
 {
 	assert(_formdata);
+	int winsize = 18;
+	int pageno = 1;
 
 	/* Create required fields */
 	for (uint8_t i = 0; i < 2 * _numfields; i = i + 2) {
@@ -136,7 +164,30 @@ int populateFields(struct formdata* _formdata,
 
 		/* Underline entry forms */
 		set_field_back(fields[i + 1], A_UNDERLINE);
+
+		/* Are these forms on a new page? */
+		if (i > pageno * (winsize - 1)) {
+			set_new_page(fields[i], true);
+			pageno++;
+		}
+
+		if (pageno > 1) {
+			uint16_t offset = i - (pageno - 1) * (winsize);
+			assert(offset >= 0);
+
+			if (move_field(fields[i], offset, 0) != E_OK) {
+				assert(0);
+				return 1;
+			}
+
+			if (move_field(fields[i + 1], offset, 15) != E_OK) {
+				assert(0);
+				return 1;
+			}
+		}
 	}
+
+	fields[_numfields * 2] = NULL;
 
 	return 0;
 }
@@ -152,6 +203,27 @@ int setFormGeometry()
 	return 0;
 }
 
+int initializeForm()
+{
+	form = new_form(fields);
+	assert(form != NULL);
+	set_form_win(form, win_form);
+	set_form_sub(form, derwin(win_form, 18, 76, 1, 1));
+
+	if (post_form(form) != E_OK)
+		return 1;
+
+	if (refresh() == ERR)
+		return 1;
+	if (wrefresh(win_body) == ERR)
+		return 1;
+	if (wrefresh(win_form) == ERR)
+		return 1;
+
+	return 0;
+}
+	
+
 int buildForm(struct formdata* _formdata, uint8_t _numfields)
 {
 	int ch;
@@ -165,8 +237,14 @@ int buildForm(struct formdata* _formdata, uint8_t _numfields)
 		return 1;
 	}
 
+	/* Instructions header */
 	mvwprintw(win_body, 1, 2,
 		  "Press F1 to quit and F2 to save fields content");
+	mvwprintw(win_body, 1, 59,
+		  "PAGE UP:   Prev Page");
+	mvwprintw(win_body, 2, 59,
+		  "PAGE DOWN: Next Page");
+
 	fields = malloc((_numfields * 2 + 1) * sizeof(FIELD*));
 	if (fields == NULL) {
 		/* return error if malloc fails */
@@ -178,17 +256,11 @@ int buildForm(struct formdata* _formdata, uint8_t _numfields)
 	if (populateFields(_formdata, _numfields) != 0)
 		return 1;
 
-	fields[_numfields * 2] = NULL;
+	/* Initialize form with given fields and windows */
+	if (initializeForm() != 0)
+		return 1;
 
-	form = new_form(fields);
-	assert(form != NULL);
-	set_form_win(form, win_form);
-	set_form_sub(form, derwin(win_form, 18, 76, 1, 1));
-	post_form(form);
-
-	refresh();
-	wrefresh(win_body);
-	wrefresh(win_form);
+	pagenum_update();
 
 	/* Generate form and monitor key presses */
 	while ((ch = getch()) != KEY_F(1))
@@ -208,42 +280,3 @@ int buildForm(struct formdata* _formdata, uint8_t _numfields)
 
 	return 0;
 }
-
-/* Example main:
-int main()
-{
-	// Test set of labels for form
-	struct formdata smeg[] = {
-		{
-			.name = "Location",
-			.data = ""
-		},
-
-		{
-			.name = "Subject",
-			.data = ""
-		},
-
-		{
-			.name = "Date",
-			.data = ""
-		},
-
-		{
-			.name = "Camera",
-			.data = ""
-		}
-	};
-
-	// Construct form from struct
-	if (buildForm(smeg, sizeof(smeg)/sizeof(struct formdata)) != 0)
-		return 1;
-
-	// If successfull, report results
-	for (uint32_t i = 0; i < sizeof(smeg)/sizeof(struct formdata); ++i) {
-		printf("%s: %s\n", smeg[i].name, smeg[i].data);
-	}
-
-	return 0;
-}
-*/
