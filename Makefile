@@ -50,12 +50,12 @@ LDLIBS		=	-lncurses -lform -lc
 LDFLAGS		=	-L/usr/local/lib
 APP		=	film-manager
 C_SRCS		=	fields_magic.c
-CXX_SRCS	=	film-manager.cpp argcontrol.cpp backend.cpp
+CXX_SRCS	=	film-manager.cpp backend.cpp
 C_OBJS		=	$(addprefix $(OBJDIR)/,$(C_SRCS:.c=.o))
 CXX_OBJS	=	$(addprefix $(OBJDIR)/,$(CXX_SRCS:.cpp=.o))
 OBJS		:=	$(C_OBJS) $(CXX_OBJS)
 INSTROBJ	:=	$(OBJS:.o=.oi)
-H		=	fields_magic.h backend.h argcontrol.h
+H		=	fields_magic.h backend.h
 LICENSE		=	./LICENSE
 
 .PHONY: all clean install coverage

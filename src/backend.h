@@ -29,6 +29,7 @@ namespace film {
     virtual void send(std::vector<const char*>* v...) = 0;
     virtual void connect() = 0;
     virtual void init() = 0;
+    virtual ~Backend() {};
   };
 
   class TextBackend :public Backend {
