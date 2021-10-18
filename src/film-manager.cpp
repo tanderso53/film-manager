@@ -167,7 +167,7 @@ int runParseOptions(int _argc, const char** _argv, uint8_t _modereg)
 
   // Cast is required on Fedora Linux with GNU libc. May break with
   // other implementations
-  while ((ch = getopt_long(_argc, (char *__getopt_argv_const *) _argv,
+  while ((ch = getopt_long(_argc, (char * const *) _argv,
 			   "hVib:", lopts, NULL)) != -1) {
     switch (ch) {
 
