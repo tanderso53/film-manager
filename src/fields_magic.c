@@ -248,7 +248,7 @@ int buildForm(struct formdata* _formdata, uint8_t _numfields)
 	fields = malloc((_numfields * 2 + 1) * sizeof(FIELD*));
 	if (fields == NULL) {
 		/* return error if malloc fails */
-		printf("Out of memory\n");
+		fprintf(stderr, "Out of memory\n");
 		return 1;
 	}
 
