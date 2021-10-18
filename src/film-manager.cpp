@@ -80,7 +80,7 @@ int printUsage(int _argc, const char** _argv,
   assert(_argc > 0);
 
   out << "Usage:\n"
-      << _argv[0] << " [ -i | --interactive ]" << '\n'
+      << _argv[0] << " [ -i | --interactive ] [ -b | --backend name ]\n"
       << _argv[0] << " -h | --help\n"
       << _argv[0] << " -V | --version \n"
       << '\n'
@@ -123,7 +123,7 @@ int runInteractive(std::vector<formdata>& _formdata,
   return 0;
 }
 
-int runParseOptions(int _argc, const char** _argv, uint8_t _modereg)
+int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
 {
     // Read arguments
   struct option lopts[] = {
@@ -165,8 +165,6 @@ int runParseOptions(int _argc, const char** _argv, uint8_t _modereg)
 
   int ch;
 
-  // Cast is required on Fedora Linux with GNU libc. May break with
-  // other implementations
   while ((ch = getopt_long(_argc, (char * const *) _argv,
 			   "hVib:", lopts, NULL)) != -1) {
     switch (ch) {
