@@ -44,6 +44,7 @@ OBJDIR		:=	./objdir
 # BUILD SECTION
 CC		=	clang
 CXX		=	clang++
+VC		=	git
 CFLAGS		=	-Wall -g -I/usr/local/include
 CXXFLAGS	=	-std=c++17
 LDLIBS		=	-lncurses -lform -lc
@@ -57,6 +58,10 @@ OBJS		:=	$(C_OBJS) $(CXX_OBJS)
 INSTROBJ	:=	$(OBJS:.o=.oi)
 H		=	fields_magic.h backend.h
 LICENSE		=	./LICENSE
+
+ifneq ("$(shell ls -a . | grep -c .git)", 0)
+CFLAGS		+=	-DFM_VERSION="\"$(shell $(VC) describe --long)\""
+endif
 
 .PHONY: all clean install coverage
 
