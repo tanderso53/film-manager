@@ -39,6 +39,39 @@ extern int optreset;
 #define FM_OP_INTERACTIVE	0x03
 #define FM_OP_BE_TEXT		0x04
 
+/// Class to store application global variables and methods
+class App {
+public:
+  typedef std::vector<std::vector<const char*>> acvector;
+  acvector aclist;
+  std::string acfile;
+} app;
+
+/// Generate autocomplete information
+App::acvector autoCompleteLists(film::Backend& _be,
+				uint8_t& _modereg,
+				size_t len)
+{
+  std::vector<std::vector<const char*>> _aclist;
+
+  if ((_modereg & FM_OP_BE_TEXT) == FM_OP_BE_TEXT) {
+    if (!app.acfile.empty()) {
+      try {
+	_be.receive(app.acfile.c_str());
+      }
+      catch (std::exception& e) {
+	std::cerr << "Failed to receive autocomplete info with error "
+		  << e.what();
+	exit(1);
+      }
+
+      _aclist.assign(len, _be.results);
+    }
+  }
+
+  return _aclist;
+}
+
 /// Generate the list of fields to fill out
 void generateFields(std::vector<formdata>& _formdata,
 		    const std::vector<const char*>& _labels)
@@ -49,8 +82,16 @@ void generateFields(std::vector<formdata>& _formdata,
     formdata& fd = _formdata.back();
     fd = {
       .name = "",
-      .data = ""
+      .data = "",
+      .aclist = NULL,
+      .naclist = 0
     };
+
+    if (!app.aclist.empty()) {
+      fd.aclist = (char* const*) &app.aclist[i];
+      fd.naclist = app.aclist[i].size();
+    }
+
     strncpy(fd.name, _labels[i], sizeof(fd.name)/sizeof(char));
   }
 }
@@ -87,6 +128,7 @@ int printUsage(int _argc, const char** _argv,
       << "Options:\n"
       << "-i | --interactive\t\tRun in interactive mode (Default)\n"
       << "-b | --backend name\t\tName of data backend to use (Default text)\n"
+      << "-a | --auto-complete-file filename\tFile to look for auto-complete list\n"
       << "-V | --version\t\t\tPrint version information and exit\n"
       << "-h | --help\t\t\tPrint this help message\n"
       << '\n'
@@ -156,6 +198,13 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
     },
 
     {
+      .name = "auto-complete-file",
+      .has_arg = required_argument,
+      .flag = NULL,
+      .val = 'a'
+    },
+
+    {
       .name = NULL,
       .has_arg = 0,
       .flag = NULL,
@@ -166,7 +215,7 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
   int ch;
 
   while ((ch = getopt_long(_argc, (char * const *) _argv,
-			   "hVib:", lopts, NULL)) != -1) {
+			   "hVib:a:", lopts, NULL)) != -1) {
     switch (ch) {
 
     case 'h':
@@ -195,6 +244,11 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
 
       exit(1);
 
+    case 'a':
+      assert(optarg);
+
+      app.acfile = optarg;
+
     case '?':
       printUsage(_argc, _argv);
       exit(1);
@@ -210,14 +264,12 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
 
 int main(int argc, const char** argv)
 {
-  // Registor to report active option flags
-  uint8_t modeReg = 0;
+  uint8_t modeReg = 0; // Registor to report active option flags
+  film::Backend* beptr = nullptr; // Ptr to set to desired backend
+  
 
   // Set program defaults
   modeReg = modeReg | FM_OP_INTERACTIVE | FM_OP_BE_TEXT;
-
-  // Ptr to set to desired backend
-  film::Backend* beptr = nullptr;
 
   // Parse CLI arguments
   runParseOptions(argc, argv, modeReg);
@@ -238,6 +290,10 @@ int main(int argc, const char** argv)
   // Set up backend based on given args
   if ((modeReg & FM_OP_BE_TEXT) == FM_OP_BE_TEXT)
     beptr = new film::TextBackend;
+
+  // Load autocomplete lists
+  assert(beptr);
+  app.aclist = autoCompleteLists(*beptr, modeReg, labels.size());
 
   // If interactive mode is set, run ncurses form interface
   if ((modeReg & FM_OP_INTERACTIVE) == FM_OP_INTERACTIVE) {

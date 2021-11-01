@@ -21,12 +21,19 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
+
+#define FM_BE_RECEIVE_ENABLED 0x01
 
 namespace film {
   /// Abstract class to describe backends that accept data
   class Backend {
   public:
+    uint8_t flags = 0;
+    std::vector<const char*> results;
+    std::vector<const char*>* rptr() {return &results;};
     virtual void send(std::vector<const char*>* v...) = 0;
+    virtual const char* receive(const char* query) = 0;
     virtual void connect() = 0;
     virtual void init() = 0;
     virtual ~Backend() {};
@@ -35,6 +42,7 @@ namespace film {
   class TextBackend :public Backend {
   public:
     virtual void send(std::vector<const char*>* v...) override;
+    virtual const char* receive(const char* query) override;
     virtual void connect() override;
     virtual void init() override;
     TextBackend(std::ostream& outstream = std::cout);

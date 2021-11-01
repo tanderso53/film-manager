@@ -17,6 +17,7 @@
 
 #include "backend.h"
 
+#include <fstream>
 #include <vector>
 #include <assert.h>
 #include <cstdarg>
@@ -24,6 +25,7 @@
 film::TextBackend::TextBackend(std::ostream& outstream)
   :_outstream(outstream)
 {
+  flags = flags | FM_BE_RECEIVE_ENABLED;
   init();
 }
 
@@ -53,6 +55,34 @@ void film::TextBackend::send(std::vector<const char*>* v...)
   }
 
   _outstream << "}\n";
+}
+
+const char* film::TextBackend::receive(const char* query)
+{
+  if ((flags & FM_BE_RECEIVE_ENABLED) == 0) {
+    return "";
+  }
+
+  assert(query);
+
+  std::ifstream datafile;
+
+  results.clear();
+  datafile.open(query);
+
+  if (datafile.fail()) {
+    std::runtime_error("Failed to open file for receive");
+  }
+
+  while (!datafile.eof()) {
+    std::string line;
+    getline(datafile, line);
+
+    if (!line.empty())
+      results.push_back(std::move(line));
+  }
+
+  return "";
 }
 
 void film::TextBackend::connect() {};
