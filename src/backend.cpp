@@ -18,7 +18,6 @@
 #include "backend.h"
 
 #include <fstream>
-#include <iostream>
 #include <vector>
 #include <assert.h>
 #include <cstdarg>
@@ -78,8 +77,6 @@ const char* film::TextBackend::receive(const char* query)
   while (!datafile.eof()) {
     std::string line;
     getline(datafile, line);
-
-    std::cerr << line << '\n';
 
     if (!line.empty())
       resultbuffer.push_back(move(line));

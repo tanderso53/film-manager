@@ -18,7 +18,7 @@
 
 #define FM_MODE_MENU		0x01
 #define FM_MODE_FORM		0x02
-#define FM_MODE_SAVED		0x03
+#define FM_MODE_SAVED		0x04
 
 extern const char* const sys_errlist[];
 extern const int sys_nerr;
@@ -109,9 +109,9 @@ static void keyfun_save(struct formdata* _formdata)
 static void pagenum_update()
 {
 	move(2,2);
-	printw("                                       ");
+	printw("                                 ");
 	move(2,2);
-	printw("%d/%d", form_page(form) + 1, form->maxpage);
+	printw("Page: %d/%d", form_page(form) + 1, form->maxpage);
 	refresh();
 	pos_form_cursor(form);
 }
@@ -127,8 +127,8 @@ int populateFields(struct formdata* _formdata,
 	/* Create required fields */
 	for (uint8_t i = 0; i < 2 * _numfields; i = i + 2) {
 		/* Use two rows of film and set offset width */
-		fields[i] = new_field(1, 10, i, 0, 0, 0);
-		fields[i+1] = new_field(1, 40, i, 15, 0, 0);
+		fields[i] = new_field(1, 15, i + 1, 0, 0, 0);
+		fields[i+1] = new_field(1, 40, i + 1, 20, 0, 0);
 		assert(fields[i] != NULL && fields[i+1] != NULL);
 
 		/* Set initial field data */
@@ -154,14 +154,14 @@ int populateFields(struct formdata* _formdata,
 		}
 
 		if (pageno > 1) {
-			uint16_t offset = i - (pageno - 1) * (winsize);
+			uint16_t offset = i + 1 - (pageno - 1) * (winsize);
 
 			if (move_field(fields[i], offset, 0) != E_OK) {
 				assert(0);
 				return 1;
 			}
 
-			if (move_field(fields[i + 1], offset, 15) != E_OK) {
+			if (move_field(fields[i + 1], offset, 20) != E_OK) {
 				assert(0);
 				return 1;
 			}
@@ -175,10 +175,10 @@ int populateFields(struct formdata* _formdata,
 
 int setFormGeometry()
 {
-	win_body = newwin(24, 80, 0, 0);
+	win_body = newwin(25, 80, 0, 0);
 	assert(win_body != NULL);
 	box(win_body, 0, 0);
-	win_form = derwin(win_body, 20, 78, 3, 1);
+	win_form = derwin(win_body, 21, 78, 3, 1);
 	assert(win_form != NULL);
 	box(win_form, 0, 0);
 	return 0;
@@ -189,7 +189,7 @@ int initializeForm()
 	form = new_form(fields);
 	assert(form != NULL);
 	set_form_win(form, win_form);
-	set_form_sub(form, derwin(win_form, 18, 76, 1, 1));
+	set_form_sub(form, derwin(win_form, 19, 76, 1, 1));
 
 	if (post_form(form) != E_OK)
 		return 1;
@@ -225,9 +225,9 @@ int initializeMenu(int _namesc, char* const* _namesv,
 
 	/* Assign menu to windows */
 	assert(win_body);
-	win_menu = derwin(win_body, 20, 78, 3, 1);
+	win_menu = derwin(win_body, 21, 78, 3, 1);
 	set_menu_win(menu, win_menu);
-	set_menu_sub(menu, derwin(win_menu, 18, 76, 1, 1));
+	set_menu_sub(menu, derwin(win_menu, 19, 76, 1, 1));
 
 	/* Post menu and write to screen */
 	assert(menu);
@@ -313,6 +313,7 @@ static void driver(int ch, struct formdata* _formdata)
 		break;
 
 	case KEY_UP:
+	case KEY_BTAB:
 		form_driver(form, REQ_PREV_FIELD);
 		form_driver(form, REQ_END_LINE);
 		break;
@@ -352,11 +353,7 @@ static void driver(int ch, struct formdata* _formdata)
 		form_driver(form, ch);
 
 		if ((ncurses_mode & FM_MODE_SAVED) == FM_MODE_SAVED) {
-			move(2, 2);
-			printw("%d/%d                          ",
-				form_page(form) + 1, form->maxpage);
-			refresh();
-			pos_form_cursor(form);
+			pagenum_update();
 		}
 
 		break;
@@ -373,24 +370,39 @@ int mdriver(int ch)
 	char buf[32];
 
 	switch(ch) {
+
 	case KEY_UP:
 		c = REQ_PREV_ITEM;
 		break;
+
 	case KEY_DOWN:
 		c = REQ_NEXT_ITEM;
 		break;
+
+	case KEY_BACKSPACE:
+		endMenu(buf, 32);
+		return 0;
+
 	case '\n':
 		endMenu(buf, 32);
+
 		if (set_field_buffer(current_field(form), 0, buf) != E_OK) {
 			fprintf(stderr,
 				"Error saving menu: %s",
 				strerror(errno));
+
 			return 1;
 		}
+
+		pagenum_update();
 		wrefresh(win_form);
+
 		return 0;
+
 	default:
+
 		return 0;
+
 	}
 
 	if (menu_driver(menu, c) != E_OK) {
@@ -417,8 +429,7 @@ int buildForm(struct formdata* _formdata, uint8_t _numfields)
 
 	/* Instructions header */
 	mvwprintw(win_body, 1, 2,
-		  "Press F1 to quit and F2 to save fields content"
-		  ", F3 for menu");
+		  "F1: quit, F2: save, F3: menu");
 	mvwprintw(win_body, 1, 59,
 		  "PAGE UP:   Prev Page");
 	mvwprintw(win_body, 2, 59,
@@ -440,6 +451,8 @@ int buildForm(struct formdata* _formdata, uint8_t _numfields)
 		return 1;
 
 	pagenum_update();
+	wrefresh(win_body);
+	wrefresh(win_form);
 
 	/* Generate form and monitor key presses */
 	while ((ch = getch()) != KEY_F(1)) {

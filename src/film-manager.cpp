@@ -36,8 +36,8 @@ extern int optreset;
 // Program operating modes
 #define FM_OP_USAGE		0x01
 #define FM_OP_VERSION		0x02
-#define FM_OP_INTERACTIVE	0x03
-#define FM_OP_BE_TEXT		0x04
+#define FM_OP_INTERACTIVE	0x04
+#define FM_OP_BE_TEXT		0x07
 
 /// Class to store application global variables and methods
 class App {
@@ -126,11 +126,15 @@ int printUsage(int _argc, const char** _argv,
       << _argv[0] << " -V | --version \n"
       << '\n'
       << "Options:\n"
-      << "-i | --interactive\t\tRun in interactive mode (Default)\n"
-      << "-b | --backend name\t\tName of data backend to use (Default text)\n"
-      << "-a | --auto-complete-file filename\tFile to look for auto-complete list\n"
-      << "-V | --version\t\t\tPrint version information and exit\n"
-      << "-h | --help\t\t\tPrint this help message\n"
+      << "-i | --interactive\t\t\tRun in interactive mode\n"
+      << "\t\t\t\t\t(Default)\n"
+      << "-b | --backend name\t\t\tName of data backend to\n"
+      << "\t\t\t\t\tuse (Default text)\n"
+      << "-a | --auto-complete-file filename\tFile to look\n"
+      << "\t\t\t\t\tfor auto-complete list\n"
+      << "-V | --version\t\t\t\tPrint version information\n"
+      << "\t\t\t\t\tand exit\n"
+      << "-h | --help\t\t\t\tPrint this help message\n"
       << '\n'
       << "Available Backend Handlers:\n"
       << "text\n";
@@ -283,7 +287,13 @@ int main(int argc, const char** argv)
       "Date/time",
       "Camera",
       "Film Type",
-      "Film Set"
+      "Film Set",
+      "ID Number",
+      "Camera Serial",
+      "Lens Name",
+      "Lens Serial",
+      "F number",
+      "Focal Length"
     }
   };
 
