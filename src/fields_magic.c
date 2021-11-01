@@ -16,8 +16,9 @@
 #include <ctype.h>
 #include <errno.h>
 
-#define FM_MODE_MENU 0x01
-#define FM_MODE_FORM 0x02
+#define FM_MODE_MENU		0x01
+#define FM_MODE_FORM		0x02
+#define FM_MODE_SAVED		0x03
 
 extern const char* const sys_errlist[];
 extern const int sys_nerr;
@@ -96,12 +97,13 @@ static void keyfun_save(struct formdata* _formdata)
 	}
 
 	/* Inform the user that save was completed */
-	printw("                                       ");
+	printw("                             ");
 	move(2,2);
 	printw("Form data saved");
 
 	refresh();
 	pos_form_cursor(form);
+	ncurses_mode = ncurses_mode | FM_MODE_SAVED;
 }
 
 static void pagenum_update()
@@ -141,6 +143,9 @@ int populateFields(struct formdata* _formdata,
 
 		/* Underline entry forms */
 		set_field_back(fields[i + 1], A_UNDERLINE);
+
+		/* Assign user pointer to formdata for autocomplete */
+		set_field_userptr(fields[i+1], &_formdata[i/2]);
 
 		/* Are these forms on a new page? */
 		if (i > pageno * (winsize - 1)) {
@@ -285,13 +290,20 @@ int endMenu(char* result, int len)
 
 static void driver(int ch, struct formdata* _formdata)
 {
+	struct formdata* fd = field_userptr(current_field(form));
+
 	switch (ch) {
 	case KEY_F(2):
 		keyfun_save(_formdata);
 		break;
 
 	case KEY_F(3):
-		initializeMenu(5, sample_ac_name, sample_ac_desc);
+		assert(fd);
+
+		if (fd->aclist)
+			initializeMenu(fd->naclist, fd->aclist,
+				       fd->aclist);
+
 		break;
 
 	case KEY_DOWN:
@@ -338,6 +350,15 @@ static void driver(int ch, struct formdata* _formdata)
 
 	default:
 		form_driver(form, ch);
+
+		if ((ncurses_mode & FM_MODE_SAVED) == FM_MODE_SAVED) {
+			move(2, 2);
+			printw("%d/%d                          ",
+				form_page(form) + 1, form->maxpage);
+			refresh();
+			pos_form_cursor(form);
+		}
+
 		break;
 	}
 
@@ -396,7 +417,8 @@ int buildForm(struct formdata* _formdata, uint8_t _numfields)
 
 	/* Instructions header */
 	mvwprintw(win_body, 1, 2,
-		  "Press F1 to quit and F2 to save fields content");
+		  "Press F1 to quit and F2 to save fields content"
+		  ", F3 for menu");
 	mvwprintw(win_body, 1, 59,
 		  "PAGE UP:   Prev Page");
 	mvwprintw(win_body, 2, 59,

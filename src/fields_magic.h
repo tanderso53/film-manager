@@ -8,8 +8,10 @@ extern "C" {
 #endif
 
 struct formdata {
-	char name[16];
-	char data[64];
+	char		name[16];
+	char		data[64];
+	char* const*	aclist;
+	uint16_t	naclist;
 };
 
 int buildForm(struct formdata* _formdata, uint8_t _numfields);

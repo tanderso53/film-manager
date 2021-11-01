@@ -246,8 +246,8 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
 
     case 'a':
       assert(optarg);
-
       app.acfile = optarg;
+      break;
 
     case '?':
       printUsage(_argc, _argv);
