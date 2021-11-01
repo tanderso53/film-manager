@@ -68,7 +68,7 @@ const char* film::TextBackend::receive(const char* query)
 
   std::ifstream datafile;
 
-  results.clear();
+  resultbuffer.clear();
   datafile.open(query);
 
   if (datafile.fail()) {
@@ -82,8 +82,10 @@ const char* film::TextBackend::receive(const char* query)
     std::cerr << line << '\n';
 
     if (!line.empty())
-      results.push_back(line.c_str());
+      resultbuffer.push_back(move(line));
   }
+
+  datafile.close();
 
   return "";
 }
@@ -91,3 +93,13 @@ const char* film::TextBackend::receive(const char* query)
 void film::TextBackend::connect() {};
 
 void film::TextBackend::init() {};
+
+std::vector<const char*> film::Backend::results()
+{
+  std::vector<const char*> v;
+  for (auto it = resultbuffer.begin(); it != resultbuffer.end(); ++it) {
+    v.push_back(it->c_str());
+  }
+
+  return v;
+}

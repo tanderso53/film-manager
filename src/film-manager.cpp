@@ -65,7 +65,7 @@ App::acvector autoCompleteLists(film::Backend& _be,
 	exit(1);
       }
 
-      _aclist.assign(len, _be.results);
+      _aclist.assign(len, _be.results());
     }
   }
 
@@ -88,7 +88,7 @@ void generateFields(std::vector<formdata>& _formdata,
     };
 
     if (!app.aclist.empty()) {
-      fd.aclist = (char* const*) &app.aclist[i];
+      fd.aclist = (char* const*) &app.aclist.at(i)[0];
       fd.naclist = app.aclist[i].size();
     }
 

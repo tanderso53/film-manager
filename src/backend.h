@@ -30,13 +30,15 @@ namespace film {
   class Backend {
   public:
     uint8_t flags = 0;
-    std::vector<const char*> results;
-    std::vector<const char*>* rptr() {return &results;};
+    std::vector<const char*> results();
     virtual void send(std::vector<const char*>* v...) = 0;
     virtual const char* receive(const char* query) = 0;
     virtual void connect() = 0;
     virtual void init() = 0;
     virtual ~Backend() {};
+
+  protected:
+    std::vector<std::string> resultbuffer;
   };
 
   class TextBackend :public Backend {
