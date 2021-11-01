@@ -47,7 +47,7 @@ CXX		=	clang++
 VC		=	git
 CFLAGS		=	-Wall -g -I/usr/local/include
 CXXFLAGS	=	-std=c++17
-LDLIBS		=	-lncurses -lform -lc
+LDLIBS		=	-lmenu -lncurses -lform -lc
 LDFLAGS		=	-L/usr/local/lib
 APP		=	film-manager
 C_SRCS		=	fields_magic.c
