@@ -47,16 +47,16 @@ CXX		=	clang++
 VC		=	git
 CFLAGS		=	-Wall -g -I/usr/local/include
 CXXFLAGS	=	-std=c++17
-LDLIBS		=	-lmenu -lncurses -lform -lc
+LDLIBS		=	-ljsoncpp -lpq -lmenu -lncurses -lform -lc
 LDFLAGS		=	-L/usr/local/lib
 APP		=	film-manager
 C_SRCS		=	fields_magic.c
-CXX_SRCS	=	film-manager.cpp backend.cpp
+CXX_SRCS	=	film-manager.cpp backend.cpp postgres-backend.cpp
 C_OBJS		=	$(addprefix $(OBJDIR)/,$(C_SRCS:.c=.o))
 CXX_OBJS	=	$(addprefix $(OBJDIR)/,$(CXX_SRCS:.cpp=.o))
 OBJS		:=	$(C_OBJS) $(CXX_OBJS)
 INSTROBJ	:=	$(OBJS:.o=.oi)
-H		=	fields_magic.h backend.h
+H		=	fields_magic.h backend.h postgres-backend.h
 LICENSE		=	./LICENSE
 
 ifneq ("$(shell ls -a . | grep -c .git)", 0)

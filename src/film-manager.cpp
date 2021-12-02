@@ -17,7 +17,9 @@
 
 #include "fields_magic.h"
 #include "backend.h"
+#include "postgres-backend.h"
 
+#include <json/json.h>
 #include <vector>
 #include <string>
 #include <cstring>
@@ -25,6 +27,7 @@
 #include <iostream>
 #include <assert.h>
 #include <getopt.h>
+#include <stdio.h>
 
 // Bring in variables from getopt library
 extern char *optarg;
@@ -37,7 +40,8 @@ extern int optreset;
 #define FM_OP_USAGE		0x01
 #define FM_OP_VERSION		0x02
 #define FM_OP_INTERACTIVE	0x04
-#define FM_OP_BE_TEXT		0x07
+#define FM_OP_BE_TEXT		0x08
+#define FM_OP_BE_POSTGRES	0x10
 
 /// Class to store application global variables and methods
 class App {
@@ -45,14 +49,16 @@ public:
   typedef std::vector<std::vector<const char*>> acvector;
   acvector aclist;
   std::string acfile;
+  std::string connString;
+  std::string dbTable;
 } app;
 
 /// Generate autocomplete information
 App::acvector autoCompleteLists(film::Backend& _be,
 				uint8_t& _modereg,
-				size_t len)
+				const std::vector<const char*>& _labels)
 {
-  std::vector<std::vector<const char*>> _aclist;
+  std::vector<std::vector<const char*>> _aclist(_labels.size());
 
   if ((_modereg & FM_OP_BE_TEXT) == FM_OP_BE_TEXT) {
     if (!app.acfile.empty()) {
@@ -65,7 +71,42 @@ App::acvector autoCompleteLists(film::Backend& _be,
 	exit(1);
       }
 
-      _aclist.assign(len, _be.results());
+      _aclist.assign(_labels.size(), _be.results());
+    }
+  }
+  else if ((_modereg & FM_OP_BE_POSTGRES) == FM_OP_BE_POSTGRES) {
+    try {
+      _be.connect();
+
+      for (unsigned int i = 0; i < _labels.size(); ++i) {
+	char query[1024];
+
+	// Build select query for this field
+	snprintf(query, 1024, "SELECT DISTINCT \"%s\" FROM \"%s\""
+		 "ORDER BY \"%s\"",
+		 _labels[i], app.dbTable.c_str(),
+		 _labels[i]);
+
+	assert(query);
+
+	// Get and parse list of existing values from database
+	Json::Value resultlist = _be.receive(query);
+
+	assert(resultlist.isObject());
+	assert(resultlist[_labels[i]].isArray());
+	
+	Json::Value& datalist = resultlist[_labels[i]];
+
+	// Add values to back of vector for this field
+	for (unsigned int j = 0; j < datalist.size(); ++j) {
+	  _aclist[i].push_back(datalist[j].asCString());
+	}
+      }
+    }
+    catch (std::exception& e) {
+	std::cerr << "Failed to receive autocomplete info with error "
+		  << e.what();
+	exit(1);
     }
   }
 
@@ -132,12 +173,15 @@ int printUsage(int _argc, const char** _argv,
       << "\t\t\t\t\tuse (Default text)\n"
       << "-a | --auto-complete-file filename\tFile to look\n"
       << "\t\t\t\t\tfor auto-complete list\n"
+      << "-P | --connection-string string\t\tDatabase string\n"
+      << "-t | --database-table name\t\tName of data table\n"
       << "-V | --version\t\t\t\tPrint version information\n"
       << "\t\t\t\t\tand exit\n"
       << "-h | --help\t\t\t\tPrint this help message\n"
       << '\n'
       << "Available Backend Handlers:\n"
-      << "text\n";
+      << "text\n"
+      << "postgres\n";
 
   return 0;
 }
@@ -209,6 +253,20 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
     },
 
     {
+      .name = "connection-string",
+      .has_arg = required_argument,
+      .flag = NULL,
+      .val = 'S'
+    },
+
+    {
+      .name = "database-table",
+      .has_arg = required_argument,
+      .flag = NULL,
+      .val = 't'
+    },
+
+    {
       .name = NULL,
       .has_arg = 0,
       .flag = NULL,
@@ -219,7 +277,7 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
   int ch;
 
   while ((ch = getopt_long(_argc, (char * const *) _argv,
-			   "hVib:a:", lopts, NULL)) != -1) {
+			   "hVib:a:S:t:", lopts, NULL)) != -1) {
     switch (ch) {
 
     case 'h':
@@ -241,10 +299,15 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
 	_modereg = _modereg | FM_OP_BE_TEXT;
 	break;
       }
+      else if (strcmp(optarg, "postgres") == 0) {
+	_modereg = _modereg | FM_OP_BE_POSTGRES;
+	break;
+      }
 
       std::cerr << "Backend handler " << optarg << " not found\n\n"
 		<< "Available backend handlers:\n"
-		<< "text\n";
+		<< "text\n"
+		<< "postgres\n";
 
       exit(1);
 
@@ -252,6 +315,14 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
       assert(optarg);
       app.acfile = optarg;
       break;
+
+    case 'S':
+      assert(optarg);
+      app.connString = optarg;
+
+    case 't':
+      assert(optarg);
+      app.dbTable = optarg;
 
     case '?':
       printUsage(_argc, _argv);
@@ -300,10 +371,16 @@ int main(int argc, const char** argv)
   // Set up backend based on given args
   if ((modeReg & FM_OP_BE_TEXT) == FM_OP_BE_TEXT)
     beptr = new film::TextBackend;
+  else if ((modeReg & FM_OP_BE_POSTGRES) == FM_OP_BE_POSTGRES) {
+    assert(!app.connString.empty());
+    assert(!app.dbTable.empty());
+
+    beptr = new film::BackendPostgres(app.connString, app.dbTable);
+  }
 
   // Load autocomplete lists
   assert(beptr);
-  app.aclist = autoCompleteLists(*beptr, modeReg, labels.size());
+  app.aclist = autoCompleteLists(*beptr, modeReg, labels);
 
   // If interactive mode is set, run ncurses form interface
   if ((modeReg & FM_OP_INTERACTIVE) == FM_OP_INTERACTIVE) {
