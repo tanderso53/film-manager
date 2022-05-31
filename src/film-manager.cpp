@@ -156,6 +156,45 @@ int processFields(film::Backend& _backend,
   return 0;
 }
 
+/// @brief Get list of labels from the database
+///
+/// This all depends on the datamodel of the database. The db
+/// datamodel should support the following for this function to work:
+///
+/// - A schema is defined for basic data components named 'film_data'
+/// - The labels are contained in a table called 'labels'
+/// - The name of the label is in a column called 'label_name'
+/// - The field 'loid' determines the order the label should be
+///   displayed
+///
+/// @returns std::vector of field labels
+std::vector<std::string> getLabelsFromDB(film::Backend& be)
+{
+  std::vector<std::string> ret;
+  std::string q;
+  Json::Value rsp;
+
+  q =
+    "SELECT label_name "
+    "FROM film_data.labels "
+    "ORDER BY loid";
+
+  rsp = be.receive(q.c_str());
+
+  for (Json::Value &el : rsp["label_name"]) {
+    ret.push_back(el.asString());
+  }
+
+  if (!ret.size()) {
+    std::string estr =
+      "getLabelsFromDB(): No results from query, invalid label list";
+
+    throw std::runtime_error(estr);
+  }
+
+  return ret;
+}
+
 int printUsage(int _argc, const char** _argv,
 	       std::ostream& out = std::cout)
 {
@@ -341,7 +380,8 @@ int main(int argc, const char** argv)
 {
   uint8_t modeReg = 0; // Registor to report active option flags
   film::Backend* beptr = nullptr; // Ptr to set to desired backend
-  
+  std::vector<const char*> labels; // Labels describing form fields
+  std::vector<formdata> fd;
 
   // Set program defaults
   modeReg = modeReg | FM_OP_INTERACTIVE | FM_OP_BE_TEXT;
@@ -349,24 +389,33 @@ int main(int argc, const char** argv)
   // Parse CLI arguments
   runParseOptions(argc, argv, modeReg);
 
-  // Temporary definitions for testing
-  std::vector<formdata> fd;
-  std::vector<const char*> labels = {
-    {
-      "Location",
-      "Subject",
-      "Date/time",
-      "Camera",
-      "Film Type",
-      "Film Set",
-      "ID Number",
-      "Camera Serial",
-      "Lens Name",
-      "Lens Serial",
-      "F number",
-      "Focal Length"
+  // Keep the testing labels around, but can get from postgres if the
+  // option is supplied
+  if (modeReg == FM_OP_BE_POSTGRES) {
+    std::vector<std::string> bestr = getLabelsFromDB(*beptr);
+
+    for (std::string &el : bestr) {
+      labels.push_back(el.c_str());
     }
-  };
+  } else {
+    // Temporary definitions for testing
+    labels = {
+      {
+	"Location",
+	"Subject",
+	"Date/time",
+	"Camera",
+	"Film Type",
+	"Film Set",
+	"ID Number",
+	"Camera Serial",
+	"Lens Name",
+	"Lens Serial",
+	"F number",
+	"Focal Length"
+      }
+    };
+  }
 
   // Set up backend based on given args
   if ((modeReg & FM_OP_BE_TEXT) == FM_OP_BE_TEXT)
