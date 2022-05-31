@@ -204,23 +204,23 @@ int printUsage(int _argc, const char** _argv,
       << _argv[0] << " [ -i | --interactive ] [ -b | --backend name ]\n"
       << _argv[0] << " -h | --help\n"
       << _argv[0] << " -V | --version \n"
-      << '\n'
-      << "Options:\n"
-      << "-i | --interactive\t\t\tRun in interactive mode\n"
-      << "\t\t\t\t\t(Default)\n"
-      << "-b | --backend name\t\t\tName of data backend to\n"
-      << "\t\t\t\t\tuse (Default text)\n"
-      << "-a | --auto-complete-file filename\tFile to look\n"
-      << "\t\t\t\t\tfor auto-complete list\n"
-      << "-P | --connection-string string\t\tDatabase string\n"
-      << "-t | --database-table name\t\tName of data table\n"
-      << "-V | --version\t\t\t\tPrint version information\n"
-      << "\t\t\t\t\tand exit\n"
-      << "-h | --help\t\t\t\tPrint this help message\n"
-      << '\n'
-      << "Available Backend Handlers:\n"
-      << "text\n"
-      << "postgres\n";
+      "\n"
+      "Options:\n"
+      "-i | --interactive\t\t\tRun in interactive mode\n"
+      "\t\t\t\t\t(Default)\n"
+      "-b | --backend name\t\t\tName of data backend to\n"
+      "\t\t\t\t\tuse (Default text)\n"
+      "-a | --auto-complete-file filename\tFile to look\n"
+      "\t\t\t\t\tfor auto-complete list\n"
+      "-S | --connection-string string\t\tDatabase string\n"
+      "-t | --database-table name\t\tName of data table\n"
+      "-V | --version\t\t\t\tPrint version information\n"
+      "\t\t\t\t\tand exit\n"
+      "-h | --help\t\t\t\tPrint this help message\n"
+      "\n"
+      "Available Backend Handlers:\n"
+      "text\n"
+      "postgres\n";
 
   return 0;
 }
