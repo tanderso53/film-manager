@@ -147,7 +147,7 @@ const char* film::BackendPostgres::receive(const char* query)
   for (unsigned int i = 0; i < fields.size(); ++i) {
     result += "\"";
     result += fields[i];
-    result += "\": {";
+    result += "\": {[";
 
     for (int j = 0; j < PQntuples(_res); ++j) {
       result += "\"";
@@ -159,7 +159,7 @@ const char* film::BackendPostgres::receive(const char* query)
       }
     }
 
-    result += "}";
+    result += "]}";
 
     if (i < fields.size() - 1) {
       result += ", ";
