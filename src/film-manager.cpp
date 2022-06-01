@@ -36,12 +36,23 @@ extern int optopt;
 extern int opterr;
 extern int optreset;
 
+// Exit codes
+#ifndef EXIT_SUCCESS
+#define EXIT_SUCCESS 0
+#endif // #ifndef EXIT_SUCCESS
+
+#ifndef EXIT_FAILURE
+#define EXIT_FAILURE 1
+#endif // #ifndef EXIT_FAILURE
+
 // Program operating modes
 #define FM_OP_USAGE		0x01
 #define FM_OP_VERSION		0x02
 #define FM_OP_INTERACTIVE	0x04
 #define FM_OP_BE_TEXT		0x08
 #define FM_OP_BE_POSTGRES	0x10
+
+#define FM_OP_BE_ALL (FM_OP_BE_TEXT | FM_OP_BE_POSTGRES)
 
 /// Class to store application global variables and methods
 class App {
@@ -102,6 +113,8 @@ App::acvector autoCompleteLists(film::Backend& _be,
 	  _aclist[i].push_back(datalist[j].asCString());
 	}
       }
+
+      _be.disconnect();
     }
     catch (std::exception& e) {
 	std::cerr << "Failed to receive autocomplete info with error "
@@ -179,6 +192,7 @@ std::vector<std::string> getLabelsFromDB(film::Backend& be)
     "FROM film_data.labels "
     "ORDER BY loid";
 
+  be.connect();
   rsp = be.receive(q.c_str());
 
   for (Json::Value &el : rsp["label_name"]) {
@@ -189,8 +203,11 @@ std::vector<std::string> getLabelsFromDB(film::Backend& be)
     std::string estr =
       "getLabelsFromDB(): No results from query, invalid label list";
 
+    be.disconnect();
     throw std::runtime_error(estr);
   }
+
+  be.disconnect();
 
   return ret;
 }
@@ -335,11 +352,13 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
       assert(optarg);
 
       if (strcmp(optarg, "text") == 0) {
-	_modereg = _modereg | FM_OP_BE_TEXT;
+	_modereg &= ~FM_OP_BE_ALL;
+	_modereg |= FM_OP_BE_TEXT;
 	break;
       }
       else if (strcmp(optarg, "postgres") == 0) {
-	_modereg = _modereg | FM_OP_BE_POSTGRES;
+	_modereg &= ~FM_OP_BE_ALL;
+	_modereg |= FM_OP_BE_POSTGRES;
 	break;
       }
 
@@ -358,10 +377,12 @@ int runParseOptions(int _argc, const char** _argv, uint8_t& _modereg)
     case 'S':
       assert(optarg);
       app.connString = optarg;
+      break;
 
     case 't':
       assert(optarg);
       app.dbTable = optarg;
+      break;
 
     case '?':
       printUsage(_argc, _argv);
@@ -389,10 +410,40 @@ int main(int argc, const char** argv)
   // Parse CLI arguments
   runParseOptions(argc, argv, modeReg);
 
+  // Set up backend based on given args
+  if (modeReg & FM_OP_BE_TEXT)
+    beptr = new film::TextBackend;
+  else if (modeReg & FM_OP_BE_POSTGRES) {
+    if (app.connString.empty()) {
+      std::cerr << "ERROR: Must supply connection string\n";
+      printUsage(argc, argv, std::cerr);
+      return EXIT_FAILURE;
+    }
+
+    if (app.dbTable.empty()) {
+      std::cerr << "Error: Must supply data table\n";
+      printUsage(argc, argv, std::cerr);
+      return EXIT_FAILURE;
+    }
+
+    beptr = new film::BackendPostgres(app.connString, app.dbTable);
+  }
+
+  assert(beptr);
+
   // Keep the testing labels around, but can get from postgres if the
   // option is supplied
-  if (modeReg == FM_OP_BE_POSTGRES) {
-    std::vector<std::string> bestr = getLabelsFromDB(*beptr);
+  if (modeReg & FM_OP_BE_POSTGRES) {
+    std::vector<std::string> bestr;
+
+    // Fatal if we can't get labels from database
+    try {
+      bestr = getLabelsFromDB(*beptr);
+    } catch (std::exception &e) {
+      std::cerr << "ERROR: Failed to get labels from DB: "
+		<< e.what() << "\n";
+      return EXIT_FAILURE;
+    }
 
     for (std::string &el : bestr) {
       labels.push_back(el.c_str());
@@ -417,22 +468,11 @@ int main(int argc, const char** argv)
     };
   }
 
-  // Set up backend based on given args
-  if ((modeReg & FM_OP_BE_TEXT) == FM_OP_BE_TEXT)
-    beptr = new film::TextBackend;
-  else if ((modeReg & FM_OP_BE_POSTGRES) == FM_OP_BE_POSTGRES) {
-    assert(!app.connString.empty());
-    assert(!app.dbTable.empty());
-
-    beptr = new film::BackendPostgres(app.connString, app.dbTable);
-  }
-
   // Load autocomplete lists
-  assert(beptr);
   app.aclist = autoCompleteLists(*beptr, modeReg, labels);
 
   // If interactive mode is set, run ncurses form interface
-  if ((modeReg & FM_OP_INTERACTIVE) == FM_OP_INTERACTIVE) {
+  if (modeReg & FM_OP_INTERACTIVE) {
     if (runInteractive(fd, labels) != 0) {
       std::cerr << "Interactive failed\n";
       return 1;

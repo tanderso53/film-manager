@@ -34,6 +34,7 @@ namespace film {
     virtual void send(std::vector<const char*>* v...) = 0;
     virtual const char* receive(const char* query) = 0;
     virtual void connect() = 0;
+    virtual void disconnect() = 0;
     virtual void init() = 0;
     virtual ~Backend() {};
 
@@ -46,6 +47,7 @@ namespace film {
     virtual void send(std::vector<const char*>* v...) override;
     virtual const char* receive(const char* query) override;
     virtual void connect() override;
+    virtual void disconnect() override {};
     virtual void init() override;
     TextBackend(std::ostream& outstream = std::cout);
 

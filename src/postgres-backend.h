@@ -30,7 +30,7 @@ namespace film {
     virtual void send(std::vector<const char*>* v...) override;
     virtual const char* receive(const char* query) override;
     virtual void connect() override;
-    virtual void disconnect();
+    virtual void disconnect() override;
     virtual void init() override;
     void setTable(const std::string& table) {_table = table;};
     const char* getTable() {return _table.c_str();};
